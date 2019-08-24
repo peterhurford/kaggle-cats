@@ -36,6 +36,26 @@ print(train_ohe.shape)
 print(test_ohe.shape)
 
 
+lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'max_iter': 500}
+results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-ohe')
+train.loc[:, 'lr'] = results_lr['train']
+test.loc[:, 'lr'] = results_lr['test']
+
+
+for col in [c for c in train.columns if 'bin' not in c and 'lr' not in c and 'ord_0' not in c]:
+    print('Encoding {}'.format(col))
+    tr = pd.DataFrame(train[col])
+    te = pd.DataFrame(test[col])
+    tr, te = ohe(tr, te)
+    print(tr.shape)
+    print(te.shape)
+    col_encode = run_cv_model(tr, te, target, runLR, lr_params, auc, 'lr-{}'.format(col))
+    train.loc[:, 'lr_{}'.format(col)] = col_encode['train']
+    test.loc[:, 'lr_{}'.format(col)] = col_encode['test']
+    train.drop(col, axis=1, inplace=True)
+    test.drop(col, axis=1, inplace=True)
+
+
 print_step('Glimpsing')
 print(train.head())
 
@@ -58,24 +78,15 @@ lgb_params = {'application': 'binary',
               'early_stop': 100,
               'verbose_eval': 50,
               'num_rounds': 10000}
-results = run_cv_model(train_ohe.astype(np.float32), test_ohe.astype(np.float32), target, runLGB, lgb_params, auc, 'lgb-ohe')
+results = run_cv_model(train, test, target, runLGB, lgb_params, auc, 'lgb')
 
 print_step('Feature importance')
 imports = results['importance'].groupby('feature')['feature', 'importance'].mean().reset_index()
 print(imports.sort_values('importance', ascending=False))
 
+import pdb
+pdb.set_trace()
+
 print_step('Making submission')
 submission = pd.DataFrame({'id': test_id, 'target': results['test']})
 submission.to_csv('submission.csv', index=False)
-
-
-lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'scale': True}
-results_lr = run_cv_model(train, test, target, runLR, lr_params, auc, 'lr-label')
-
-
-lr_params = {'solver': 'lbfgs', 'C': 0.1151}
-results_lr2 = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-ohe')
-
-
-import pdb
-pdb.set_trace()
