@@ -7,6 +7,7 @@ from scipy.sparse import csr_matrix, hstack
 from sklearn.preprocessing import StandardScaler, LabelBinarizer
 from sklearn.model_selection import KFold
 
+from sklearn.linear_model import LogisticRegression
 import lightgbm as lgb
 
 
@@ -103,3 +104,37 @@ def runLGB(train_X, train_y, test_X, test_y, test_X2, params):
     pred_test_y = np.mean(preds_test_y, axis=0)
     pred_test_y2 = np.mean(preds_test_y2, axis=0)
     return pred_test_y, pred_test_y2, model.feature_importance()
+
+
+def runLR(train_X, train_y, test_X, test_y, test_X2, params):
+    params['random_state'] = 42
+    if params.get('scale'):
+        print_step('Scale')
+        params.pop('scale')
+        scaler = StandardScaler()
+        scaler.fit(train_X.values)
+        train_X = scaler.transform(train_X.values)
+        test_X = scaler.transform(test_X.values)
+        test_X2 = scaler.transform(test_X2.values)
+
+    print_step('Train LR')
+    model = LogisticRegression(**params)
+    model.fit(train_X, train_y)
+    print_step('Predict 1/2')
+    pred_test_y = model.predict_proba(test_X)[:, 1]
+    print_step('Predict 2/2')
+    pred_test_y2 = model.predict_proba(test_X2)[:, 1]
+    return pred_test_y, pred_test_y2, None
+
+
+def ohe(train, test):
+    print_step('Dummies 1/4')
+    traintest = pd.concat([train, test])
+    print_step('Dummies 2/4')
+    dummies = pd.get_dummies(traintest, columns=traintest.columns, drop_first=True, sparse=True)
+    dummies = dummies.to_coo().tocsr()
+    print_step('Dummies 3/4')
+    train_ohe = dummies[:train.shape[0], :]
+    print_step('Dummies 4/4')
+    test_ohe = dummies[train.shape[0]:, :]
+    return train_ohe, test_ohe
