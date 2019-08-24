@@ -127,14 +127,48 @@ def runLR(train_X, train_y, test_X, test_y, test_X2, params):
     return pred_test_y, pred_test_y2, None
 
 
-def ohe(train, test):
-    print_step('Dummies 1/4')
+def ohe(train, test, cat_cols):
+    print_step('Dummies 1/9')
     traintest = pd.concat([train, test])
-    print_step('Dummies 2/4')
-    dummies = pd.get_dummies(traintest, columns=traintest.columns, drop_first=True, sparse=True)
-    dummies = dummies.to_coo().tocsr()
-    print_step('Dummies 3/4')
-    train_ohe = dummies[:train.shape[0], :]
-    print_step('Dummies 4/4')
-    test_ohe = dummies[train.shape[0]:, :]
+    if isinstance(cat_cols, pd.Index) or isinstance(cat_cols, list) or len(set(traintest[cat_cols].values)) > 100:
+        print_step('Dummies 2/9')
+        if not isinstance(cat_cols, list) and not isinstance(cat_cols, pd.Index):
+            cat_cols = [cat_cols]
+        dummies = pd.get_dummies(traintest[cat_cols], columns=cat_cols, drop_first=True, sparse=True)
+        print_step('Dummies 3/9')
+        dummies = dummies.to_coo().tocsr()
+        print_step('Dummies 4/9')
+        numeric_cols = list(set(train.columns) - set(cat_cols))
+        if numeric_cols:
+            numerics = traintest[numeric_cols]
+            print_step('Dummies 5/9')
+            scaler = StandardScaler()
+            numerics = scaler.fit_transform(numerics.values)
+            print_step('Dummies 6/9')
+            numerics = csr_matrix(numerics)
+            print_step('Dummies 7/9')
+            dummies = hstack((numerics, dummies)).tocsr()
+        else:
+            print('...No numeric cols, skipping steps')
+        print_step('Dummies 8/9')
+        train_ohe = dummies[:train.shape[0], :]
+        print_step('Dummies 9/9')
+        test_ohe = dummies[train.shape[0]:, :]
+    else:
+        print_step('Dummies 2/9')
+        dummies = pd.get_dummies(traintest[cat_cols], columns=cat_cols, drop_first=True)
+        numeric_cols = list(set(train.columns) - set(cat_cols))
+        if numeric_cols:
+            numerics = traintest[numeric_cols]
+            print_step('Dummies 3/9')
+            scaler = StandardScaler()
+            numerics = pd.DataFrame(scaler.fit_transform(numerics.values))
+            print_step('Dummies 4/9')
+            dummies = pd.concat([numerics.reset_index(drop=True), dummies.reset_index(drop=True)], axis=1)
+        else:
+            print('...No numeric cols, skipping steps')
+        print_step('Dummies 8/9')
+        train_ohe = dummies.iloc[:train.shape[0], :]
+        print_step('Dummies 9/9')
+        test_ohe = dummies.iloc[train.shape[0]:, :]
     return train_ohe, test_ohe

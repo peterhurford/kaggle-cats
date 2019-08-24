@@ -1,10 +1,17 @@
+STOP_AT_DATASET = False
 RUN_LR_W_LABEL = False
+RUN_LGB_W_FREQ = False
+RUN_LGB_W_LABEL = False
 RUN_LGB_W_LGB = False
-RUN_LGB_W_FREQ = True
-RUN_LR_WITH_OHE = False
-ADD_LR = False
 RUN_LGB_WITH_LR_ENCODING = False
+RUN_LR_WITH_OHE = False
+RUN_LR_WITH_ALL_OHE = True
 
+ADD_LR = False
+PRINT_LGB_FEATURE_IMPORTANCE = False
+
+
+import string
 
 import numpy as np
 import pandas as pd
@@ -30,8 +37,41 @@ train.drop(['target', 'id'], axis=1, inplace=True)
 test.drop('id', axis=1, inplace=True)
 
 
+print_step('Cleaning ordinal')
+ord_1 = ['Contributor', 'Novice', 'Expert', 'Master', 'Grandmaster']
+ord_1 = dict(zip(ord_1, range(len(ord_1))))
+train.loc[:, 'ord_1'] = train['ord_1'].apply(lambda x: ord_1[x]).astype(int)
+test.loc[:, 'ord_1'] = test['ord_1'].apply(lambda x: ord_1[x]).astype(int)
+
+ord_2 = ['Freezing', 'Cold', 'Warm', 'Hot', 'Boiling Hot', 'Lava Hot']
+ord_2 = dict(zip(ord_2, range(len(ord_2))))
+train.loc[:, 'ord_2'] = train['ord_2'].apply(lambda x: ord_2[x]).astype(int)
+test.loc[:, 'ord_2'] = test['ord_2'].apply(lambda x: ord_2[x]).astype(int)
+
+ord_3 = sorted(list(set(train['ord_3'].values)))
+ord_3 = dict(zip(ord_3, range(len(ord_3))))
+train.loc[:, 'ord_3'] = train['ord_3'].apply(lambda x: ord_3[x]).astype(int)
+test.loc[:, 'ord_3'] = test['ord_3'].apply(lambda x: ord_3[x]).astype(int)
+
+ord_4 = sorted(list(set(train['ord_4'].values)))
+ord_4 = dict(zip(ord_4, range(len(ord_4))))
+train.loc[:, 'ord_4'] = train['ord_4'].apply(lambda x: ord_4[x]).astype(int)
+test.loc[:, 'ord_4'] = test['ord_4'].apply(lambda x: ord_4[x]).astype(int)
+
+ord_5 = sorted(list(set(train['ord_5'].values)))
+ord_5 = dict(zip(ord_5, range(len(ord_5))))
+train.loc[:, 'ord_5'] = train['ord_5'].apply(lambda x: ord_5[x]).astype(int)
+test.loc[:, 'ord_5'] = test['ord_5'].apply(lambda x: ord_5[x]).astype(int)
+
+
+if STOP_AT_DATASET:
+    import pdb
+    pdb.set_trace()
+
+
 print_step('Simple label encoding')
-for c in train.columns:
+cat_cols = [c for c in train.columns if 'nom' in c]
+for c in cat_cols + ['bin_3', 'bin_4']:
     le = LabelEncoder()
     le.fit(pd.concat([train[c], test[c]])) 
     train[c] = le.transform(train[c])
@@ -40,7 +80,25 @@ for c in train.columns:
 
 lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'max_iter': 500}
 if RUN_LR_W_LABEL:
-    results = run_cv_model(train, test, target, runLR, lr_params, auc, 'lr-label')
+    lr_params2 = lr_params.copy()
+    lr_params2['scale'] = True
+    results = run_cv_model(train, test, target, runLR, lr_params2, auc, 'lr-label')
+
+
+if RUN_LR_WITH_ALL_OHE:
+    print_step('All OHE')
+    train_ohe, test_ohe = ohe(train, test, train.columns)
+    print(train_ohe.shape)
+    print(test_ohe.shape)
+    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe')
+
+
+if RUN_LR_WITH_OHE:
+    print_step('OHE')
+    train_ohe, test_ohe = ohe(train, test, cat_cols)
+    print(train_ohe.shape)
+    print(test_ohe.shape)
+    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-ohe')
 
 
 lgb_params = {'application': 'binary',
@@ -61,11 +119,18 @@ lgb_params = {'application': 'binary',
               'early_stop': 100,
               'verbose_eval': 50,
               'num_rounds': 10000}
+
+
+if ADD_LR:
+    train.loc[:, 'lr'] = results_lr['train']
+    test.loc[:, 'lr'] = results_lr['test']
+    lgb_params['num_leaves'] = 4
+
+
 if RUN_LGB_W_LABEL:
     results = run_cv_model(train, test, target, runLGB, lgb_params, auc, 'lgb-label')
 
 
-cat_cols =  [c for c in train.columns if 'bin' not in c and 'lr' not in c and 'ord_0' not in c] 
 if RUN_LGB_W_LGB:
     for col in cat_cols:
         train[col] = train[col].astype('category')
@@ -88,27 +153,12 @@ if RUN_LGB_W_FREQ:
     results = run_cv_model(train, test, target, runLGB, lgb_params, auc, 'lgb-freq')
 
 
-print_step('OHE')
-train_ohe, test_ohe = ohe(train, test)
-print(train_ohe.shape)
-print(test_ohe.shape)
-
-
-if RUN_LR_WITH_OHE:
-    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-ohe')
-
-
-if ADD_LR:
-    train.loc[:, 'lr'] = results_lr['train']
-    test.loc[:, 'lr'] = results_lr['test']
-
-
 if RUN_LGB_WITH_LR_ENCODING:
     for col in cat_cols:
         print('LR Encoding {}'.format(col))
         tr = pd.DataFrame(train[col])
         te = pd.DataFrame(test[col])
-        tr, te = ohe(tr, te)
+        tr, te = ohe(tr, te, col)
         print(tr.shape)
         print(te.shape)
         col_encode = run_cv_model(tr, te, target, runLR, lr_params, auc, 'lr-{}'.format(col))
@@ -117,11 +167,17 @@ if RUN_LGB_WITH_LR_ENCODING:
         train.drop(col, axis=1, inplace=True)
         test.drop(col, axis=1, inplace=True)
 
-    results = run_cv_model(train, test, target, runLGB, lgb_params, auc, 'lgb-lr')
+    lgb_params2 = lgb_params.copy()
+    lgb_params2['lambda_l1'] = 5
+    lgb_params2['lambda_l2'] = 5
+    results = run_cv_model(train, test, target, runLGB, lgb_params2, auc, 'lgb-lr')
 
-print_step('Feature importance')
-imports = results['importance'].groupby('feature')['feature', 'importance'].mean().reset_index()
-print(imports.sort_values('importance', ascending=False))
+
+if PRINT_LGB_FEATURE_IMPORTANCE:
+    print_step('Feature importance')
+    imports = results['importance'].groupby('feature')['feature', 'importance'].mean().reset_index()
+    print(imports.sort_values('importance', ascending=False))
+
 
 import pdb
 pdb.set_trace()
