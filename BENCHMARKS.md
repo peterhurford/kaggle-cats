@@ -11,6 +11,7 @@
 * DataRobot 100% AutoML (ENET w/Binning) - CV 0.8031 LB 0.80796
 * LR w/ all OHE (old) - CV 0.8032 LB 0.80739
 * LR w/ all OHE - CV 0.8033 LB ?
-* LR w/ all OHE + scalars - CV 0.80364 LB 0.80795
+* LR w/ all OHE + scalars (old) - CV 0.80364 LB 0.80795
+* LR w/ all OHE + scalars (old) - CV 0.80365 LB ?
 
-* 90%(LR w/ all OHE + scalars) + 10%(LGB w/ LR encoding) - CV 0.80367 LB 0.80795
+* 90%(LR w/ all OHE + scalars (old)) + 10%(LGB w/ LR encoding) - CV 0.80367 LB 0.80795
