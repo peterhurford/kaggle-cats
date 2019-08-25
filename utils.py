@@ -15,8 +15,8 @@ def print_step(step):
     print('[{}] {}'.format(datetime.now(), step))
 
 
-def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='model'):
-    kf = KFold(n_splits=5)
+def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='model', n_folds=5):
+    kf = KFold(n_splits=n_folds)
     fold_splits = kf.split(train, target)
     cv_scores = []
     pred_full_test = 0
@@ -24,7 +24,7 @@ def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='
     feature_importance_df = pd.DataFrame()
     i = 1
     for dev_index, val_index in fold_splits:
-        print('Started ' + label + ' fold ' + str(i) + '/5')
+        print('Started ' + label + ' fold ' + str(i) + '/' + str(n_folds))
         if isinstance(train, pd.DataFrame):
             dev_X, val_X = train.iloc[dev_index], train.iloc[val_index]
             dev_y, val_y = target[dev_index], target[val_index]
@@ -50,7 +50,7 @@ def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='
     print('{} cv mean score : {}'.format(label, np.mean(cv_scores)))
     print('{} cv total score : {}'.format(label, eval_fn(target, pred_train)))
     print('{} cv std score : {}'.format(label, np.std(cv_scores)))
-    pred_full_test = pred_full_test / 5.0
+    pred_full_test = pred_full_test / n_folds
 
     results = {'label': label,
                'train': pred_train, 'test': pred_full_test,
