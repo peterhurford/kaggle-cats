@@ -3,10 +3,10 @@ RUN_LR_W_LABEL = False
 RUN_LGB_W_FREQ = False
 RUN_LGB_W_LABEL = False
 RUN_LGB_W_LGB = False
-RUN_LGB_WITH_LR_ENCODING = False
+RUN_LGB_WITH_LR_ENCODING = True
 RUN_LR_WITH_OHE = False
 RUN_LR_WITH_ALL_OHE = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = False
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = True
 
 ADD_LR = False
 PRINT_LGB_FEATURE_IMPORTANCE = False
@@ -81,7 +81,7 @@ for c in cat_cols + ['bin_3', 'bin_4']:
     test[c] = le.transform(test[c])
 
 
-lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'max_iter': 500}
+lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'max_iter': 1000}
 if RUN_LR_W_LABEL:
     lr_params2 = lr_params.copy()
     lr_params2['scale'] = True

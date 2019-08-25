@@ -15,12 +15,12 @@ def print_step(step):
     print('[{}] {}'.format(datetime.now(), step))
 
 
-def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='model', classes=1):
+def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='model'):
     kf = KFold(n_splits=5)
     fold_splits = kf.split(train, target)
     cv_scores = []
     pred_full_test = 0
-    pred_train = np.zeros((train.shape[0], classes))
+    pred_train = np.zeros((train.shape[0]))
     feature_importance_df = pd.DataFrame()
     i = 1
     for dev_index, val_index in fold_splits:
@@ -33,8 +33,6 @@ def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='
             dev_y, val_y = target[dev_index], target[val_index]
         params2 = params.copy()
         pred_val_y, pred_test_y, importances = model_fn(dev_X, dev_y, val_X, val_y, test, params2)
-        pred_val_y = pred_val_y.reshape(-1, classes)
-        pred_test_y = pred_test_y.reshape(-1, classes)
         pred_full_test = pred_full_test + pred_test_y
         pred_train[val_index] = pred_val_y
         if eval_fn is not None:
@@ -50,10 +48,8 @@ def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='
         i += 1
     print('{} cv scores : {}'.format(label, cv_scores))
     print('{} cv mean score : {}'.format(label, np.mean(cv_scores)))
+    print('{} cv total score : {}'.format(label, eval_fn(target, pred_train)))
     print('{} cv std score : {}'.format(label, np.std(cv_scores)))
-    if classes == 1:
-        pred_train = np.array([r[0] for r in pred_train])
-        pred_full_test = np.array([r[0] for r in pred_full_test])
     pred_full_test = pred_full_test / 5.0
 
     results = {'label': label,
