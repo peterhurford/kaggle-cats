@@ -5,7 +5,8 @@ RUN_LGB_W_LABEL = False
 RUN_LGB_W_LGB = False
 RUN_LGB_WITH_LR_ENCODING = False
 RUN_LR_WITH_OHE = False
-RUN_LR_WITH_ALL_OHE = True
+RUN_LR_WITH_ALL_OHE = False
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = False
 
 ADD_LR = False
 PRINT_LGB_FEATURE_IMPORTANCE = False
@@ -16,7 +17,9 @@ import string
 import numpy as np
 import pandas as pd
 
-from sklearn.preprocessing import LabelEncoder
+from scipy.sparse import csr_matrix, hstack
+
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import roc_auc_score as auc
 
 from utils import print_step, ohe, run_cv_model, runLGB, runLR
@@ -85,9 +88,28 @@ if RUN_LR_W_LABEL:
     results = run_cv_model(train, test, target, runLR, lr_params2, auc, 'lr-label')
 
 
-if RUN_LR_WITH_ALL_OHE:
+if RUN_LR_WITH_ALL_OHE or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS:
     print_step('All OHE')
     train_ohe, test_ohe = ohe(train, test, train.columns)
+    print(train_ohe.shape)
+    print(test_ohe.shape)
+
+
+if RUN_LR_WITH_ALL_OHE:
+    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe')
+
+
+if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS:
+    numeric_cols = list(set(train.columns) - set(cat_cols))
+    traintest = pd.concat([train, test])
+    numerics = traintest[numeric_cols]
+    scaler = StandardScaler()
+    numerics = scaler.fit_transform(numerics.values)
+    numerics = csr_matrix(numerics)
+    train_numerics = numerics[:train.shape[0], :]
+    test_numerics = numerics[train.shape[0]:, :]
+    train_ohe = hstack((train_numerics, train_ohe)).tocsr()
+    test_ohe = hstack((test_numerics, test_ohe)).tocsr()
     print(train_ohe.shape)
     print(test_ohe.shape)
     results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe')
