@@ -2,13 +2,13 @@ STOP_AT_DATASET = False
 RUN_LR_W_LABEL = False
 RUN_LGB_W_FREQ = False
 RUN_LGB_W_LABEL = False
-RUN_LGB_W_LGB = False
-RUN_LGB_WITH_LR_ENCODING = True
+RUN_LGB_W_LGB = True
+RUN_LGB_WITH_LR_ENCODING = False
 RUN_LR_WITH_OHE = False
 RUN_LR_WITH_ALL_OHE = False
 RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = True
 
-ADD_LR = False
+ADD_LR = True
 PRINT_LGB_FEATURE_IMPORTANCE = False
 
 
@@ -140,7 +140,7 @@ lgb_params = {'application': 'binary',
               'lambda_l2': 0.1,
               'early_stop': 100,
               'verbose_eval': 50,
-              'num_rounds': 10000}
+              'num_rounds': 100000}
 
 
 if ADD_LR:
@@ -158,6 +158,13 @@ if RUN_LGB_W_LGB:
         train[col] = train[col].astype('category')
         test[col] = test[col].astype('category')
     lgb_params2 = lgb_params.copy()
+    lgb_params2['max_cat_to_onehot'] = 2
+    lgb_params2['cat_smooth'] = 20
+    lgb_params2['num_leaves'] = 2
+    lgb_params2['learning_rate'] = 0.3
+    lgb_params2['lambda_l1'] = 2.0
+    lgb_params2['lambda_l2'] = 2.0
+    lgb_params2['feature_fraction'] = 0.1
     lgb_params2['cat_cols'] = cat_cols
     results = run_cv_model(train, test, target, runLGB, lgb_params2, auc, 'lgb-lgb')
 

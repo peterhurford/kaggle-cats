@@ -3,7 +3,7 @@
 * LGB w/ Label Encoding (old) - CV 0.7813 LB 0.78519 
 * LGB w/ Label Encoding - CV 0.7817 LB ?
 * Abhishek NN - CV 0.78887 LB 0.80576
-* LGB w/ LGB Encoding - CV 0.7955 LB ?
+* LGB w/ LGB Encoding - CV 0.80091 LB ?
 * LR w/ OHE - CV 0.7982 LB ?
 * LGB w/ LR encoding - CV 0.80070 LB 0.80514
 * LGB w/ Freq Encoding + All LR - CV 0.8025 LB ?
