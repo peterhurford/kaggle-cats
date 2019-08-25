@@ -16,7 +16,7 @@ def print_step(step):
 
 
 def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='model', n_folds=5):
-    kf = KFold(n_splits=n_folds)
+    kf = KFold(n_splits=n_folds, random_state=42)
     fold_splits = kf.split(train, target)
     cv_scores = []
     pred_full_test = 0

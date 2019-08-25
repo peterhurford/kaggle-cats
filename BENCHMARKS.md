@@ -19,3 +19,4 @@
 * 85%(LR w/ all OHE + scalars) + 15%(Catboost) - CV 0.80372 LB ?
 
 * LR w/ all OHE + scalars; 20 folds - CV 0.80459 LB 0.80806 
+* LR w/ all OHE + scalars; 50 folds - CV 0.80470 LB ?
