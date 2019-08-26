@@ -2,10 +2,11 @@ import numpy as np
 import pandas as pd
 
 from datetime import datetime
-from scipy.sparse import csr_matrix, hstack
+from scipy.sparse import csr_matrix, hstack, vstack
 
 from sklearn.preprocessing import StandardScaler, LabelBinarizer
 from sklearn.model_selection import KFold
+from sklearn.metrics import roc_auc_score as auc
 
 from sklearn.linear_model import LogisticRegression
 import lightgbm as lgb
@@ -17,7 +18,7 @@ def print_step(step):
 
 def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='model', n_folds=5):
     kf = KFold(n_splits=n_folds, random_state=42)
-    fold_splits = kf.split(train, target)
+    fold_splits = kf.split(train)
     cv_scores = []
     pred_full_test = 0
     pred_train = np.zeros((train.shape[0]))
@@ -27,10 +28,9 @@ def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='
         print('Started ' + label + ' fold ' + str(i) + '/' + str(n_folds))
         if isinstance(train, pd.DataFrame):
             dev_X, val_X = train.iloc[dev_index], train.iloc[val_index]
-            dev_y, val_y = target[dev_index], target[val_index]
         else:
             dev_X, val_X = train[dev_index], train[val_index]
-            dev_y, val_y = target[dev_index], target[val_index]
+        dev_y, val_y = target[dev_index], target[val_index]
         params2 = params.copy()
         pred_val_y, pred_test_y, importances = model_fn(dev_X, dev_y, val_X, val_y, test, params2)
         pred_full_test = pred_full_test + pred_test_y
@@ -120,6 +120,34 @@ def runLR(train_X, train_y, test_X, test_y, test_X2, params):
     pred_test_y = model.predict_proba(test_X)[:, 1]
     print_step('Predict 2/2')
     pred_test_y2 = model.predict_proba(test_X2)[:, 1]
+    return pred_test_y, pred_test_y2, None
+
+
+def runLRPL(train_X, train_y, test_X, test_y, test_X2, params):
+    print_step('Train LR')
+    model = LogisticRegression(**params)
+    model.fit(train_X, train_y)
+    print_step('Predict 1/2')
+    pred_test_y = model.predict_proba(test_X)[:, 1]
+    print_step('Predict 2/2')
+    pred_test_y2 = model.predict_proba(test_X2)[:, 1]
+    print('Before PL AUC: ' + str(auc(test_y, pred_test_y)))
+    print_step('PL')
+    test_small = test_X2[pred_test_y2 < 0.01]
+    test_large = test_X2[pred_test_y2 > (1 - 0.01)]
+    print('...PL Added {} rows'.format(test_small.shape[0] + test_large.shape[0]))
+    train_X = vstack((train_X, test_small, test_large))
+    train_y = pd.concat((train_y, pd.Series(0 for i in range(test_small.shape[0]))))
+    train_y = pd.concat((train_y, pd.Series(1 for i in range(test_large.shape[0]))))
+    train_y = train_y.values
+    print_step('Train LRPL')
+    model = LogisticRegression(**params)
+    model.fit(train_X, train_y)
+    print_step('Predict 1/2')
+    pred_test_y = model.predict_proba(test_X)[:, 1]
+    print_step('Predict 2/2')
+    pred_test_y2 = model.predict_proba(test_X2)[:, 1]
+    print('After PL AUC: ' + str(auc(test_y, pred_test_y)))
     return pred_test_y, pred_test_y2, None
 
 

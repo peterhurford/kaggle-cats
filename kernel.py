@@ -6,8 +6,9 @@ RUN_LGB_W_LGB = False
 RUN_LGB_WITH_LR_ENCODING = False
 RUN_LR_WITH_OHE = False
 RUN_LR_WITH_ALL_OHE = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD = True
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = True
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD = False
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = False
 
 ADD_LR = False
 PRINT_LGB_FEATURE_IMPORTANCE = False
@@ -89,7 +90,7 @@ if RUN_LR_W_LABEL:
     results = run_cv_model(train, test, target, runLR, lr_params2, auc, 'lr-label')
 
 
-if RUN_LR_WITH_ALL_OHE or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD:
+if RUN_LR_WITH_ALL_OHE or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:
     print_step('All OHE')
     train_ohe, test_ohe = ohe(train, test, train.columns)
     print(train_ohe.shape)
@@ -100,7 +101,7 @@ if RUN_LR_WITH_ALL_OHE:
     results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe')
 
 
-if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD:
+if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:
     numeric_cols = list(set(train.columns) - set(cat_cols))
     traintest = pd.concat([train, test])
     numerics = traintest[numeric_cols]
@@ -113,7 +114,9 @@ if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD:
     test_ohe = hstack((test_numerics, test_ohe)).tocsr()
     print(train_ohe.shape)
     print(test_ohe.shape)
-    if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD:
+    if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:
+        n_folds = 100
+    elif RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD:
         n_folds = 20
     else:
         n_folds = 5
