@@ -83,7 +83,7 @@ for c in cat_cols + ['bin_3', 'bin_4']:
     test[c] = le.transform(test[c])
 
 
-lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'max_iter': 1000}
+lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'max_iter': 1000, 'fit_intercept': False}
 if RUN_LR_W_LABEL:
     lr_params2 = lr_params.copy()
     lr_params2['scale'] = True
