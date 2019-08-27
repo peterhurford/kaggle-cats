@@ -7,6 +7,7 @@
 * LR w/ OHE - CV 0.7982 LB ?
 * LGB w/ LR encoding - CV 0.80070 LB 0.80514
 * Catboost - CV 0.80114 LB ?
+* Target - CV 0.80115 LB ?
 * LGB w/ Freq Encoding + All LR - CV 0.8025 LB ?
 * LGB w/ LR encoding + All LR - CV 0.8031 LB ?
 * DataRobot 100% AutoML (ENET w/Binning) - CV 0.8031 LB 0.80796

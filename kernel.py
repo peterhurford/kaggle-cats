@@ -2,13 +2,14 @@ STOP_AT_DATASET = False
 RUN_LR_W_LABEL = False
 RUN_LGB_W_FREQ = False
 RUN_LGB_W_LABEL = False
-RUN_LGB_W_LGB = False
+RUN_LGB_W_LGB = True
 RUN_LGB_WITH_LR_ENCODING = False
 RUN_LR_WITH_OHE = False
 RUN_LR_WITH_ALL_OHE = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = True
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = False
 RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD = False
 RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = False
+RUN_TARGET = False
 
 ADD_LR = False
 PRINT_LGB_FEATURE_IMPORTANCE = False
@@ -24,7 +25,7 @@ from scipy.sparse import csr_matrix, hstack
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import roc_auc_score as auc
 
-from utils import print_step, ohe, run_cv_model, runLGB, runLR
+from utils import print_step, ohe, run_cv_model, runLGB, runLR, runTarget
 
 
 print_step('Loading')
@@ -83,7 +84,7 @@ for c in cat_cols + ['bin_3', 'bin_4']:
     test[c] = le.transform(test[c])
 
 
-lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'max_iter': 1000, 'fit_intercept': False}
+lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'max_iter': 1000}
 if RUN_LR_W_LABEL:
     lr_params2 = lr_params.copy()
     lr_params2['scale'] = True
@@ -120,7 +121,9 @@ if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD 
         n_folds = 20
     else:
         n_folds = 5
-    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe', n_folds=n_folds)
+    results_lr2 = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe-scalar', n_folds=n_folds)
+    import pdb
+    pdb.set_trace()
 
 
 if RUN_LR_WITH_OHE:
@@ -129,6 +132,11 @@ if RUN_LR_WITH_OHE:
     print(train_ohe.shape)
     print(test_ohe.shape)
     results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-ohe')
+
+
+if RUN_TARGET:
+    t_params = {'alpha': 75, 'max_unique': 12068, 'used_features': train.shape[1]}
+    results_t = run_cv_model(train, test, target, runTarget, t_params, auc, 'target')
 
 
 lgb_params = {'application': 'binary',
@@ -169,7 +177,7 @@ if RUN_LGB_W_LGB:
     lgb_params2['max_cat_to_onehot'] = 2
     lgb_params2['cat_smooth'] = 20
     lgb_params2['num_leaves'] = 2
-    lgb_params2['learning_rate'] = 0.3
+    lgb_params2['learning_rate'] = 0.03
     lgb_params2['lambda_l1'] = 2.0
     lgb_params2['lambda_l2'] = 2.0
     lgb_params2['feature_fraction'] = 0.1

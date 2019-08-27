@@ -9,6 +9,7 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import roc_auc_score as auc
 
 from sklearn.linear_model import LogisticRegression
+from target_encoding import TargetEncoderClassifier
 import lightgbm as lgb
 
 
@@ -115,6 +116,17 @@ def runLR(train_X, train_y, test_X, test_y, test_X2, params):
 
     print_step('Train LR')
     model = LogisticRegression(**params)
+    model.fit(train_X, train_y)
+    print_step('Predict 1/2')
+    pred_test_y = model.predict_proba(test_X)[:, 1]
+    print_step('Predict 2/2')
+    pred_test_y2 = model.predict_proba(test_X2)[:, 1]
+    return pred_test_y, pred_test_y2, None
+
+
+def runTarget(train_X, train_y, test_X, test_y, test_X2, params):
+    print_step('Train Target')
+    model = TargetEncoderClassifier(**params)
     model.fit(train_X, train_y)
     print_step('Predict 1/2')
     pred_test_y = model.predict_proba(test_X)[:, 1]
