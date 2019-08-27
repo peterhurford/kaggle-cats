@@ -2,13 +2,13 @@ STOP_AT_DATASET = False
 RUN_LR_W_LABEL = False
 RUN_LGB_W_FREQ = False
 RUN_LGB_W_LABEL = False
-RUN_LGB_W_LGB = True
+RUN_LGB_W_LGB = False
 RUN_LGB_WITH_LR_ENCODING = False
 RUN_LR_WITH_OHE = False
 RUN_LR_WITH_ALL_OHE = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = False
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = True
 RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = False
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = True
 RUN_TARGET = False
 
 ADD_LR = False
@@ -84,7 +84,7 @@ for c in cat_cols + ['bin_3', 'bin_4']:
     test[c] = le.transform(test[c])
 
 
-lr_params = {'solver': 'lbfgs', 'C': 0.1151, 'max_iter': 1000}
+lr_params = {'solver': 'liblinear', 'dual': True, 'C': 0.1151, 'max_iter': 1000}
 if RUN_LR_W_LABEL:
     lr_params2 = lr_params.copy()
     lr_params2['scale'] = True
@@ -93,7 +93,8 @@ if RUN_LR_W_LABEL:
 
 if RUN_LR_WITH_ALL_OHE or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:
     print_step('All OHE')
-    train_ohe, test_ohe = ohe(train, test, train.columns)
+    ohe_cols = [c for c in train.columns if c not in ['ord_0', 'ord_2', 'ord_3', 'ord_4', 'ord_5']]
+    train_ohe, test_ohe = ohe(train, test, ohe_cols)
     print(train_ohe.shape)
     print(test_ohe.shape)
 
@@ -104,6 +105,7 @@ if RUN_LR_WITH_ALL_OHE:
 
 if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:
     numeric_cols = list(set(train.columns) - set(cat_cols))
+    numeric_cols = [c for c in numeric_cols if c not in ['ord_0', 'ord_1', 'bin_0', 'bin_1', 'bin_2', 'bin_3', 'bin_4']]
     traintest = pd.concat([train, test])
     numerics = traintest[numeric_cols]
     scaler = StandardScaler()
