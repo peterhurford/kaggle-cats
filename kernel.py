@@ -4,16 +4,16 @@ RUN_LGB_W_FREQ = False
 RUN_LGB_W_LABEL = False
 RUN_LGB_W_LGB = False
 RUN_LGB_BY_F = False
-RUN_LGB_WITH_LR_ENCODING = True
+RUN_LGB_WITH_LR_ENCODING = False
 RUN_LR_WITH_OHE = False
 RUN_LR_WITH_ALL_OHE = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = True
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = False
 RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = False
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = True
 RUN_TARGET = False
 
-ADD_LR = True
-PRINT_LGB_FEATURE_IMPORTANCE = True
+ADD_LR = False
+PRINT_LGB_FEATURE_IMPORTANCE = False
 
 
 import string
@@ -45,7 +45,7 @@ test.drop('id', axis=1, inplace=True)
 
 
 print_step('Cleaning ordinal')
-ord_1 = ['Contributor', 'Novice', 'Expert', 'Master', 'Grandmaster']
+ord_1 = ['Novice', 'Contributor', 'Expert', 'Master', 'Grandmaster']
 ord_1 = dict(zip(ord_1, range(len(ord_1))))
 train.loc[:, 'ord_1'] = train['ord_1'].apply(lambda x: ord_1[x]).astype(int)
 test.loc[:, 'ord_1'] = test['ord_1'].apply(lambda x: ord_1[x]).astype(int)
@@ -71,6 +71,11 @@ train.loc[:, 'ord_5'] = train['ord_5'].apply(lambda x: ord_5[x]).astype(int)
 test.loc[:, 'ord_5'] = test['ord_5'].apply(lambda x: ord_5[x]).astype(int)
 
 
+print_step('Transform day')
+train['t_day'] = train['day'].apply(lambda d: np.abs(d - 4))
+test['t_day'] = test['day'].apply(lambda d: np.abs(d - 4))
+
+
 if STOP_AT_DATASET:
     import pdb
     pdb.set_trace()
@@ -92,30 +97,22 @@ if RUN_LR_W_LABEL:
     results = run_cv_model(train, test, target, runLR, lr_params2, auc, 'lr-label')
 
 
-if RUN_LR_WITH_ALL_OHE or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:
-    print_step('All OHE')
-    ohe_cols = [c for c in train.columns if c not in ['ord_0', 'ord_2', 'ord_3', 'ord_4', 'ord_5']]
-    train_ohe, test_ohe = ohe(train, test, ohe_cols)
+if RUN_LR_WITH_ALL_OHE:
+    print_step('OHE')
+    train_ohe, test_ohe = ohe(train, test, train.columns)
     print(train_ohe.shape)
     print(test_ohe.shape)
-
-
-if RUN_LR_WITH_ALL_OHE:
     results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe')
 
 
 if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:
-    numeric_cols = list(set(train.columns) - set(cat_cols))
-    numeric_cols = [c for c in numeric_cols if c not in ['ord_0', 'ord_1', 'bin_0', 'bin_1', 'bin_2', 'bin_3', 'bin_4']]
-    traintest = pd.concat([train, test])
-    numerics = traintest[numeric_cols]
-    scaler = StandardScaler()
-    numerics = scaler.fit_transform(numerics.values)
-    numerics = csr_matrix(numerics)
-    train_numerics = numerics[:train.shape[0], :]
-    test_numerics = numerics[train.shape[0]:, :]
-    train_ohe = hstack((train_numerics, train_ohe)).tocsr()
-    test_ohe = hstack((test_numerics, test_ohe)).tocsr()
+    print_step('OHE')
+    ohe_cols = ['bin_0', 'bin_1', 'bin_2', 'bin_3', 'bin_4',
+                'nom_0', 'nom_1', 'nom_2', 'nom_3', 'nom_4', 'nom_5', 'nom_6', 'nom_7', 'nom_8', 'nom_9',
+                'month', 't_day']
+    numeric_cols = ['ord_0', 'ord_1', 'ord_2', 'ord_3', 'ord_4', 'ord_5',
+                    'month', 't_day']
+    train_ohe, test_ohe = ohe(train, test, cat_cols=ohe_cols, numeric_cols=numeric_cols)
     print(train_ohe.shape)
     print(test_ohe.shape)
     if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:

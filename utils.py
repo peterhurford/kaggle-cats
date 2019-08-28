@@ -199,7 +199,7 @@ def runLRPL(train_X, train_y, test_X, test_y, test_X2, params):
     return pred_test_y, pred_test_y2, None
 
 
-def ohe(train, test, cat_cols):
+def ohe(train, test, cat_cols, numeric_cols='auto'):
     print_step('Dummies 1/9')
     traintest = pd.concat([train, test])
     if isinstance(cat_cols, pd.Index) or isinstance(cat_cols, list) or len(set(traintest[cat_cols].values)) > 100:
@@ -210,8 +210,11 @@ def ohe(train, test, cat_cols):
         print_step('Dummies 3/9')
         dummies = dummies.to_coo().tocsr()
         print_step('Dummies 4/9')
-        numeric_cols = list(set(train.columns) - set(cat_cols))
+        print('Cats: {}'.format(sorted(cat_cols)))
+        if numeric_cols == 'auto':
+            numeric_cols = list(set(train.columns) - set(cat_cols))
         if numeric_cols:
+            print('Numerics: {}'.format(sorted(numeric_cols)))
             numerics = traintest[numeric_cols]
             print_step('Dummies 5/9')
             scaler = StandardScaler()
