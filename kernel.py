@@ -4,7 +4,7 @@ RUN_LGB_W_FREQ = False
 RUN_LGB_W_LABEL = False
 RUN_LGB_W_LGB = False
 RUN_LGB_BY_F = False
-RUN_LGB_WITH_LR_ENCODING = False
+RUN_LGB_WITH_LR_ENCODING = True
 RUN_LR_WITH_OHE = False
 RUN_LR_WITH_ALL_OHE = False
 RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = True
@@ -12,8 +12,8 @@ RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD = False
 RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = False
 RUN_TARGET = False
 
-ADD_LR = False
-PRINT_LGB_FEATURE_IMPORTANCE = False
+ADD_LR = True
+PRINT_LGB_FEATURE_IMPORTANCE = True
 
 
 import string
@@ -124,9 +124,7 @@ if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD 
         n_folds = 20
     else:
         n_folds = 5
-    results_lr2 = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe-scalar', n_folds=n_folds)
-    import pdb
-    pdb.set_trace()
+    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe-scalar', n_folds=n_folds)
 
 
 if RUN_LR_WITH_OHE:
@@ -163,6 +161,9 @@ if ADD_LR:
     train.loc[:, 'lr'] = results_lr['train']
     test.loc[:, 'lr'] = results_lr['test']
     lgb_params['num_leaves'] = 4
+    lgb_params['lambda_l2'] = 4
+    lgb_params['max_depth'] = 2
+    lgb_params['feature_fraction'] = 1.0
 
 
 if RUN_LGB_W_LABEL:
