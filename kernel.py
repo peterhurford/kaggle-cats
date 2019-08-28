@@ -3,12 +3,13 @@ RUN_LR_W_LABEL = False
 RUN_LGB_W_FREQ = False
 RUN_LGB_W_LABEL = False
 RUN_LGB_W_LGB = False
+RUN_LGB_BY_F = False
 RUN_LGB_WITH_LR_ENCODING = False
 RUN_LR_WITH_OHE = False
 RUN_LR_WITH_ALL_OHE = False
 RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = True
 RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = True
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = False
 RUN_TARGET = False
 
 ADD_LR = False
@@ -25,7 +26,7 @@ from scipy.sparse import csr_matrix, hstack
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import roc_auc_score as auc
 
-from utils import print_step, ohe, run_cv_model, runLGB, runLR, runTarget
+from utils import print_step, ohe, run_cv_model, runLGB, runFFLGB, runLR, runTarget
 
 
 print_step('Loading')
@@ -144,14 +145,11 @@ if RUN_TARGET:
 lgb_params = {'application': 'binary',
               'boosting': 'gbdt',
               'metric': 'auc',
-              'num_leaves': 24,
-              'max_depth': 11,
-              'learning_rate': 0.02,
+              'num_leaves': 3,
+              'max_depth': 1,
+              'learning_rate': 0.05,
               'bagging_fraction': 0.9,
               'feature_fraction': 0.3,
-              'min_split_gain': 0.02,
-              'min_child_samples': 150,
-              'min_child_weight': 0.02,
               'verbosity': -1,
               'seed': 1,
               'lambda_l1': 0.1,
@@ -171,8 +169,40 @@ if RUN_LGB_W_LABEL:
     results = run_cv_model(train, test, target, runLGB, lgb_params, auc, 'lgb-label')
 
 
+if RUN_LGB_BY_F:
+    # for col in cat_cols:
+    #     print('LR Encoding {}'.format(col))
+    #     tr = pd.DataFrame(train[col])
+    #     te = pd.DataFrame(test[col])
+    #     tr, te = ohe(tr, te, col)
+    #     print(tr.shape)
+    #     print(te.shape)
+    #     col_encode = run_cv_model(tr, te, target, runLR, lr_params, auc, 'lr-{}'.format(col))
+    #     train.loc[:, 'lr_{}'.format(col)] = col_encode['train']
+    #     test.loc[:, 'lr_{}'.format(col)] = col_encode['test']
+    #     train.drop(col, axis=1, inplace=True)
+    #     test.drop(col, axis=1, inplace=True)
+    lgb_params = {'application': 'binary',
+                  'boosting': 'gbdt',
+                  'metric': 'auc',
+                  'num_leaves': 3,
+                  'max_depth': 1,
+                  'learning_rate': 0.1,
+                  'bagging_fraction': 0.9,
+                  'feature_fraction': 0.4,
+                  'verbosity': -1,
+                  'max_cat_to_onehot': 2,
+                  'cat_smooth': 20,
+                  'seed': 1,
+                  'lambda_l1': 2,
+                  'lambda_l2': 2,
+                  'cat_cols': cat_cols}
+                  # 'cat_cols': ['none']}
+    results = run_cv_model(train, test, target, runFFLGB, lgb_params, auc, 'ff-lgb')
+
+
 if RUN_LGB_W_LGB:
-    for col in cat_cols:
+    for col in train.columns:
         train[col] = train[col].astype('category')
         test[col] = test[col].astype('category')
     lgb_params2 = lgb_params.copy()

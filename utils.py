@@ -103,6 +103,42 @@ def runLGB(train_X, train_y, test_X, test_y, test_X2, params):
     return pred_test_y, pred_test_y2, model.feature_importance()
 
 
+def runFFLGB(train_X, train_y, test_X, test_y, test_X2, params):
+    preds_test_y = []
+    preds_test_y2 = []
+    aucs = []
+    if params.get('cat_cols'):
+        cat_cols = params.pop('cat_cols')
+    for col in train_X.columns:
+        print(col)
+        if col in cat_cols:
+            print('(cat)')
+            cat_col = [col]
+        else:
+            cat_col = []
+        d_train = lgb.Dataset(train_X[[col]], label=train_y)
+        d_valid = lgb.Dataset(test_X[[col]], label=test_y)
+        watchlist = [d_train, d_valid]
+        model = lgb.train(params,
+                          train_set=d_train,
+                          valid_sets=watchlist,
+                          num_boost_round=1000,
+                          early_stopping_rounds=40,
+                          categorical_feature=cat_col,
+                          verbose_eval=10)
+        pred_test_y = model.predict(test_X[[col]], num_iteration=model.best_iteration)
+        pred_test_y2 = model.predict(test_X2[[col]], num_iteration=model.best_iteration)
+        aucs += [auc(test_y, pred_test_y)]
+        preds_test_y += [pred_test_y]
+        preds_test_y2 += [pred_test_y2]
+
+    pred_test_y = np.mean(preds_test_y, axis=0)
+    pred_test_y2 = np.mean(preds_test_y2, axis=0)
+    import pdb
+    pdb.set_trace()
+    return pred_test_y, pred_test_y2, None
+
+
 def runLR(train_X, train_y, test_X, test_y, test_X2, params):
     params['random_state'] = 42
     if params.get('scale'):
