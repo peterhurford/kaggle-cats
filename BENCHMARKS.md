@@ -16,10 +16,11 @@
 * LR w/ all OHE - CV 0.8033 LB ?
 * LR w/ all OHE + scalars + PL - CV 0.80362 LB ?
 * LR w/ all OHE + scalars (old) - CV 0.80364 LB 0.80795
-* LR w/ all OHE + scalars - CV 0.80406 LB ?
+* LR w/ OHE + Scalars - CV 0.80406 LB 0.80833
+* LR w/ OHE + Scalars + Suppress Rare (<10) - CV 0.80405 LB 0.8083
 
 * 90%(LR w/ all OHE + scalars (old)) + 10%(LGB w/ LR encoding) - CV 0.80367 LB 0.80795
-* 85%(LR w/ all OHE + scalars (old))+ 15%(Catboost) - CV 0.80372 LB ?
+* 85%(LR w/ all OHE + scalars (old)) + 15%(Catboost) - CV 0.80372 LB ?
 
 * LR w/ all OHE + scalars; 100 folds (older) - CV 0.80477 LB 0.80807
 * LR w/ all OHE + scalars; 100 folds (old) - CV 0.80516 LB 0.80844

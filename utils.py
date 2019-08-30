@@ -40,7 +40,7 @@ def run_cv_model(train, test, target, model_fn, params={}, eval_fn=None, label='
             cv_score = eval_fn(val_y, pred_val_y)
             cv_scores.append(cv_score)
             print(label + ' cv score {}: {}'.format(i, cv_score))
-        if importances is not None:
+        if importances is not None and isinstance(train, pd.DataFrame):
             fold_importance_df = pd.DataFrame()
             fold_importance_df['feature'] = train.columns.values
             fold_importance_df['importance'] = importances

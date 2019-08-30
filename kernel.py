@@ -7,13 +7,13 @@ RUN_LGB_BY_F = False
 RUN_LGB_WITH_LR_ENCODING = False
 RUN_LR_WITH_OHE = False
 RUN_LR_WITH_ALL_OHE = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD = False
-RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD = True
+RUN_LR_WITH_ALL_OHE_PLUS_SCALARS = True
 RUN_TARGET = False
 
+SUPPRESS_RARE = 10
 ADD_LR = False
 PRINT_LGB_FEATURE_IMPORTANCE = False
+N_FOLDS = 100
 
 
 import string
@@ -44,36 +44,44 @@ train.drop(['target', 'id'], axis=1, inplace=True)
 test.drop('id', axis=1, inplace=True)
 
 
+print_step('Combine')
+traintest = pd.concat([train, test])
+
+
 print_step('Cleaning ordinal')
 ord_1 = ['Novice', 'Contributor', 'Expert', 'Master', 'Grandmaster']
 ord_1 = dict(zip(ord_1, range(len(ord_1))))
-train.loc[:, 'ord_1'] = train['ord_1'].apply(lambda x: ord_1[x]).astype(int)
-test.loc[:, 'ord_1'] = test['ord_1'].apply(lambda x: ord_1[x]).astype(int)
+traintest.loc[:, 'ord_1'] = traintest['ord_1'].apply(lambda x: ord_1[x]).astype(int)
 
 ord_2 = ['Freezing', 'Cold', 'Warm', 'Hot', 'Boiling Hot', 'Lava Hot']
 ord_2 = dict(zip(ord_2, range(len(ord_2))))
-train.loc[:, 'ord_2'] = train['ord_2'].apply(lambda x: ord_2[x]).astype(int)
-test.loc[:, 'ord_2'] = test['ord_2'].apply(lambda x: ord_2[x]).astype(int)
+traintest.loc[:, 'ord_2'] = traintest['ord_2'].apply(lambda x: ord_2[x]).astype(int)
 
-ord_3 = sorted(list(set(train['ord_3'].values)))
+ord_3 = sorted(traintest['ord_3'].unique())
 ord_3 = dict(zip(ord_3, range(len(ord_3))))
-train.loc[:, 'ord_3'] = train['ord_3'].apply(lambda x: ord_3[x]).astype(int)
-test.loc[:, 'ord_3'] = test['ord_3'].apply(lambda x: ord_3[x]).astype(int)
+traintest.loc[:, 'ord_3'] = traintest['ord_3'].apply(lambda x: ord_3[x]).astype(int)
 
-ord_4 = sorted(list(set(train['ord_4'].values)))
+ord_4 = sorted(traintest['ord_4'].unique())
 ord_4 = dict(zip(ord_4, range(len(ord_4))))
-train.loc[:, 'ord_4'] = train['ord_4'].apply(lambda x: ord_4[x]).astype(int)
-test.loc[:, 'ord_4'] = test['ord_4'].apply(lambda x: ord_4[x]).astype(int)
+traintest.loc[:, 'ord_4'] = traintest['ord_4'].apply(lambda x: ord_4[x]).astype(int)
 
-ord_5 = sorted(list(set(train['ord_5'].values)))
+ord_5 = sorted(traintest['ord_5'].unique())
 ord_5 = dict(zip(ord_5, range(len(ord_5))))
-train.loc[:, 'ord_5'] = train['ord_5'].apply(lambda x: ord_5[x]).astype(int)
-test.loc[:, 'ord_5'] = test['ord_5'].apply(lambda x: ord_5[x]).astype(int)
+traintest.loc[:, 'ord_5'] = traintest['ord_5'].apply(lambda x: ord_5[x]).astype(int)
 
 
 print_step('Transform day')
-train['t_day'] = train['day'].apply(lambda d: np.abs(d - 4))
-test['t_day'] = test['day'].apply(lambda d: np.abs(d - 4))
+traintest['t_day'] = traintest['day'].apply(lambda d: np.abs(d - 4))
+
+
+if SUPPRESS_RARE:
+    print_step('Suppress rare categoricals ({})'.format(SUPPRESS_RARE))
+    traintest = traintest.apply(lambda x: x.mask(x.map(x.value_counts()) < SUPPRESS_RARE, "rare"))
+
+
+print_step('Re-split')
+train = traintest.iloc[:train.shape[0], :]
+test = traintest.iloc[train.shape[0]:, :]
 
 
 if STOP_AT_DATASET:
@@ -86,15 +94,21 @@ cat_cols = [c for c in train.columns if 'nom' in c]
 for c in cat_cols + ['bin_3', 'bin_4']:
     le = LabelEncoder()
     le.fit(pd.concat([train[c], test[c]])) 
-    train[c] = le.transform(train[c])
-    test[c] = le.transform(test[c])
+    train.loc[:, c] = le.transform(train[c])
+    test.loc[:, c] = le.transform(test[c])
+
+
 
 
 lr_params = {'solver': 'liblinear', 'dual': True, 'C': 0.1151, 'max_iter': 1000}
+if SUPPRESS_RARE:
+    lr_params['C'] = 0.125
+
+
 if RUN_LR_W_LABEL:
     lr_params2 = lr_params.copy()
     lr_params2['scale'] = True
-    results = run_cv_model(train, test, target, runLR, lr_params2, auc, 'lr-label')
+    results = run_cv_model(train, test, target, runLR, lr_params2, auc, 'lr-label', n_folds=N_FOLDS)
 
 
 if RUN_LR_WITH_ALL_OHE:
@@ -102,10 +116,10 @@ if RUN_LR_WITH_ALL_OHE:
     train_ohe, test_ohe = ohe(train, test, train.columns)
     print(train_ohe.shape)
     print(test_ohe.shape)
-    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe')
+    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe', n_folds=N_FOLDS)
 
 
-if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:
+if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS:
     print_step('OHE')
     ohe_cols = ['bin_0', 'bin_1', 'bin_2', 'bin_3', 'bin_4',
                 'nom_0', 'nom_1', 'nom_2', 'nom_3', 'nom_4', 'nom_5', 'nom_6', 'nom_7', 'nom_8', 'nom_9',
@@ -115,26 +129,7 @@ if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS or RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD 
     train_ohe, test_ohe = ohe(train, test, cat_cols=ohe_cols, numeric_cols=numeric_cols)
     print(train_ohe.shape)
     print(test_ohe.shape)
-    if RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_100_FOLD:
-        n_folds = 100
-    elif RUN_LR_WITH_ALL_OHE_PLUS_SCALARS_20_FOLD:
-        n_folds = 20
-    else:
-        n_folds = 5
-    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe-scalar', n_folds=n_folds)
-
-
-if RUN_LR_WITH_OHE:
-    print_step('OHE')
-    train_ohe, test_ohe = ohe(train, test, cat_cols)
-    print(train_ohe.shape)
-    print(test_ohe.shape)
-    results_lr = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-ohe')
-
-
-if RUN_TARGET:
-    t_params = {'alpha': 75, 'max_unique': 12068, 'used_features': train.shape[1]}
-    results_t = run_cv_model(train, test, target, runTarget, t_params, auc, 'target')
+    results = run_cv_model(train_ohe, test_ohe, target, runLR, lr_params, auc, 'lr-all-ohe-scalar', n_folds=N_FOLDS)
 
 
 lgb_params = {'application': 'binary',
@@ -155,8 +150,8 @@ lgb_params = {'application': 'binary',
 
 
 if ADD_LR:
-    train.loc[:, 'lr'] = results_lr['train']
-    test.loc[:, 'lr'] = results_lr['test']
+    train.loc[:, 'lr'] = results['train']
+    test.loc[:, 'lr'] = results['test']
     lgb_params['num_leaves'] = 4
     lgb_params['lambda_l2'] = 4
     lgb_params['max_depth'] = 2
@@ -164,7 +159,7 @@ if ADD_LR:
 
 
 if RUN_LGB_W_LABEL:
-    results = run_cv_model(train, test, target, runLGB, lgb_params, auc, 'lgb-label')
+    results = run_cv_model(train, test, target, runLGB, lgb_params, auc, 'lgb-label', n_folds=N_FOLDS)
 
 
 if RUN_LGB_BY_F:
@@ -196,7 +191,7 @@ if RUN_LGB_BY_F:
                   'lambda_l2': 2,
                   'cat_cols': cat_cols}
                   # 'cat_cols': ['none']}
-    results = run_cv_model(train, test, target, runFFLGB, lgb_params, auc, 'ff-lgb')
+    results = run_cv_model(train, test, target, runFFLGB, lgb_params, auc, 'ff-lgb', n_folds=N_FOLDS)
 
 
 if RUN_LGB_W_LGB:
@@ -212,7 +207,7 @@ if RUN_LGB_W_LGB:
     lgb_params2['lambda_l2'] = 2.0
     lgb_params2['feature_fraction'] = 0.1
     lgb_params2['cat_cols'] = cat_cols
-    results = run_cv_model(train, test, target, runLGB, lgb_params2, auc, 'lgb-lgb')
+    results = run_cv_model(train, test, target, runLGB, lgb_params2, auc, 'lgb-lgb', n_folds=N_FOLDS)
 
 
 if RUN_LGB_W_FREQ:
@@ -225,7 +220,7 @@ if RUN_LGB_W_FREQ:
     test = traintest.iloc[train.shape[0]:, :]
     print(train.shape)
     print(test.shape)
-    results = run_cv_model(train, test, target, runLGB, lgb_params, auc, 'lgb-freq')
+    results = run_cv_model(train, test, target, runLGB, lgb_params, auc, 'lgb-freq', n_folds=N_FOLDS)
 
 
 if RUN_LGB_WITH_LR_ENCODING:
@@ -236,7 +231,7 @@ if RUN_LGB_WITH_LR_ENCODING:
         tr, te = ohe(tr, te, col)
         print(tr.shape)
         print(te.shape)
-        col_encode = run_cv_model(tr, te, target, runLR, lr_params, auc, 'lr-{}'.format(col))
+        col_encode = run_cv_model(tr, te, target, runLR, lr_params, auc, 'lr-{}'.format(col), n_folds=N_FOLDS)
         train.loc[:, 'lr_{}'.format(col)] = col_encode['train']
         test.loc[:, 'lr_{}'.format(col)] = col_encode['test']
         train.drop(col, axis=1, inplace=True)
@@ -245,7 +240,7 @@ if RUN_LGB_WITH_LR_ENCODING:
     lgb_params2 = lgb_params.copy()
     lgb_params2['lambda_l1'] = 5
     lgb_params2['lambda_l2'] = 5
-    results = run_cv_model(train, test, target, runLGB, lgb_params2, auc, 'lgb-lr')
+    results = run_cv_model(train, test, target, runLGB, lgb_params2, auc, 'lgb-lr', n_folds=N_FOLDS)
 
 
 if PRINT_LGB_FEATURE_IMPORTANCE:
