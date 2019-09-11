@@ -133,7 +133,13 @@ def runFFLGB(train_X, train_y, test_X, test_y, test_X2, params):
         preds_test_y2 += [pred_test_y2]
 
     pred_test_y = np.mean(preds_test_y, axis=0)
-    pred_test_y2 = np.mean(preds_test_y2, axis=0)
+    print('Uncalibrated Joint AUC: {}'.format(auc(test_y, pred_test_y)))
+
+    aucs_ = (np.array(aucs) - 0.5) ** 0.25 
+    aucs_ = np.array(aucs_) * (len(aucs) / sum(aucs_))
+    pred_test_y = np.mean(np.array(preds_test_y) * aucs_[:, np.newaxis], axis=0)
+    print('Calibrated Joint AUC: {}'.format(auc(test_y, pred_test_y)))
+    pred_test_y2 = np.mean(np.array(preds_test_y2) * aucs_[:, np.newaxis], axis=0)
     import pdb
     pdb.set_trace()
     return pred_test_y, pred_test_y2, None
@@ -149,6 +155,7 @@ def runLR(train_X, train_y, test_X, test_y, test_X2, params):
         train_X = scaler.transform(train_X.values)
         test_X = scaler.transform(test_X.values)
         test_X2 = scaler.transform(test_X2.values)
+
 
     print_step('Train LR')
     model = LogisticRegression(**params)
@@ -208,7 +215,7 @@ def ohe(train, test, cat_cols, numeric_cols='auto'):
             cat_cols = [cat_cols]
         dummies = pd.get_dummies(traintest[cat_cols], columns=cat_cols, drop_first=True, sparse=True)
         print_step('Dummies 3/9')
-        dummies = dummies.to_coo().tocsr()
+        dummies = dummies.sparse.to_coo().tocsr()
         print_step('Dummies 4/9')
         print('Cats: {}'.format(sorted(cat_cols)))
         if numeric_cols == 'auto':
